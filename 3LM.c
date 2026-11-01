@@ -21,8 +21,6 @@
 
 	Then, we can make up a list of chances using the ReLU function, and tada, we have the language model!
 	Although, it is gonna get slightly more complex and capable over the development time.
-
-	This version is stupid and incapable, and is just a demonstration of what can such a simple algorithm do.
 */
 
 #include <stdio.h>
@@ -31,7 +29,7 @@
 #include <time.h>
 
 #define DATASET_BUFFER_SIZE 100000
-#define INPUT_BUFFER_SIZE 4
+#define INPUT_BUFFER_SIZE 1000
 #define TOKENS_COUNT 50
 #define PRECISION_SHIFT 2.0
 #define TEMPERATURE 10.0
@@ -59,26 +57,52 @@ int getText(char* buffer, FILE *f, size_t* size) {
 	return 0;
 }
 
-void nextTokens(size_t n, char* input, char* buffer, struct token tokens[], int* tokIdx) {
+void nextTokens(size_t n, char* input, int inIdx, char* buffer, struct token tokens[], int* tokIdx) {
 	for (int i=0; i<TOKENS_COUNT; i++) {
 		tokens[i].character = '\0';
 		tokens[i].score = 0;
 	}
 	*tokIdx = 0;
-	for (size_t i=0; i+3<n; i++) {
+	for (size_t i=0; i+2<n; i++) {
 		if (*tokIdx == TOKENS_COUNT) break;
-		if (input[0] == buffer[i] && input[1] == buffer[i+1] && input[2] == buffer[i+2]) {
+		if (input[inIdx] == buffer[i] && input[inIdx+1] == buffer[i+1] && input[inIdx+2] == buffer[i+2]) {
 			int tokenExists = 0;
 			for (int j=0; j<TOKENS_COUNT; j++) {
 				if (tokens[j].character == buffer[i+3]) {
 					tokens[j].score++;
 					tokenExists = 1;
+	
+					int doesMatch = 1;
+					int matchCount = 1;
+					int checkIdx = inIdx;
+					while (doesMatch == 1) {
+						checkIdx--;
+						if (checkIdx < 0) break;
+						if (input[checkIdx] == buffer[i-matchCount]) {
+							doesMatch = 1;
+							matchCount++;
+							tokens[j].score++;
+						} else doesMatch = 0;
+					}
 				}
 			}
 			if (tokenExists == 0) {
 				tokens[*tokIdx].character = buffer[i+3];
 				tokens[*tokIdx].score++;
 				(*tokIdx)++;
+
+				int doesMatch = 1;
+				int matchCount = 1;
+				int checkIdx = inIdx;
+				while (doesMatch == 1) {
+					checkIdx--;
+					if (checkIdx < 0) break;
+					if (input[checkIdx] == buffer[i-matchCount]) {
+						doesMatch = 1;
+						matchCount++;
+						tokens[*tokIdx].score++;
+					} else doesMatch = 0;
+				}
 			}
 		}
 	}
@@ -121,15 +145,20 @@ int main(int argc, char *argv[]) {
 	double msec = (afterText-start)*1000.0/CLOCKS_PER_SEC;
 	printf("Opened and read %s in %0.5f ms\n", argv[1], msec);
 
+	int inIdx = -4;
 	char input[INPUT_BUFFER_SIZE];
 	if (fgets(input, sizeof(input), stdin) == NULL) return 1;
+	for (int i=0; i<INPUT_BUFFER_SIZE; i++) {
+		if (input[i] != '\0') inIdx++;
+		else break;
+	}
 
 	start = clock();
 
 	struct token tokens[TOKENS_COUNT];
 	struct output outputs[TOKENS_COUNT];
 	int tokIdx = 0;
-	nextTokens(n, input, buffer, tokens, &tokIdx);
+	nextTokens(n, input, inIdx, buffer, tokens, &tokIdx);
 	ReLU(tokens, tokIdx, TEMPERATURE, outputs);
 
 	double totalChance = 0.0;

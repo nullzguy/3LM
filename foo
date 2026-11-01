@@ -1,0 +1,14 @@
+input - "HELLO"
+
+dataset - "HELLO WORLD, HELP ME, MARSHMELLOW"
+
+LLO -> ' ' (score 1)
+E(LLO) -> ' ' (score 2)
+H(ELLO) -> ' ' (score 3)
+
+LLO -> 'W' (score 1)
+E(LLO) -> 'W' (score 2)
+
+TOKENS:
+' ' -> score 3
+'W' -> score 2
